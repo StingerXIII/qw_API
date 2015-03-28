@@ -17,6 +17,10 @@ from qiwi_auth import auth_parms
 #    'password':  ''
 #}
 
+#setting up logging
+LOG_FILENAME='qiwi_wallet.log'
+logging.basicConfig(filename=LOG_FILENAME,level=logging.DEBUG)
+
 #defining API functions wrappers
 
 def create_bill (args):
@@ -42,13 +46,15 @@ def create_bill (args):
     responseCode = c.getinfo(c.HTTP_CODE)
 
     try:
-      message = '\nJSON Response:\n' + str(json.loads(response.getvalue()))
+      message = 'JSON Response: ' + str(json.loads(response.getvalue()))
     except ValueError: 
-      message = '\nno JSON response'
+      message = 'no JSON response'
 
-    if response != 200:
-      raise QiwiApiException('HTTP Status: ' + str(responseCode) + message)
+    if responseCode != 200:
+      logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
+      raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' + message)
 
+    logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + message)
     return message
 
 def check_bill_status (args):
@@ -63,13 +69,15 @@ def check_bill_status (args):
     c.perform()
     responseCode = c.getinfo(c.HTTP_CODE)
     try:
-      message = '\nJSON Response:\n' + str(json.loads(response.getvalue()))
+      message = 'JSON Response: ' + str(json.loads(response.getvalue()))
     except ValueError: 
-      message = '\nno JSON response'
+      message = 'no JSON response'
 
-    if response != 200:
-      raise QiwiApiException('HTTP Status: ' + str(responseCode) + message)
+    if responseCode != 200:
+      logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + message)
+      raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' +  message)
 
+    logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + message)
     return message
 
 def reject_bill(args):
@@ -87,13 +95,15 @@ def reject_bill(args):
   c.perform()
   responseCode = c.getinfo(c.HTTP_CODE)
   try:
-    message = '\nJSON Response:\n' + str(json.loads(response.getvalue()))
+    message = 'JSON Response: ' + str(json.loads(response.getvalue()))
   except ValueError: 
-    message = '\nno JSON response'
+    message = 'no JSON response'
 
-  if response != 200:
-    raise QiwiApiException('HTTP Status: ' + str(responseCode) + message)
+  if responseCode != 200:
+    logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + message)
+    raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' + message)
 
+  logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + message)
   return message
 
 # configure command line arguments
@@ -103,8 +113,8 @@ create_parser = subparsers.add_parser('create', help=create_bill.__doc__)
 create_parser.add_argument('-u', '--user', help='user phone number', required=True)
 create_parser.add_argument('-a', '--amount', help='amount of money to pay', required=True)
 create_parser.add_argument('-c', '--account', help='user personal account number', required=True)
-create_parser.add_argument('-b', '--bill', help='bill unique ID', required=True)
-create_parser.set_defaults(func=create_bill)
+create_parser.add_argument('-b', '--bill', help='bill unique ID')
+create_parser.set_defaults(func=create_bill, bill=datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
 
 check_parser = subparsers.add_parser('check', help=check_bill_status.__doc__)
 check_parser.add_argument('-b', '--bill', help='bill unique ID', required=True)
