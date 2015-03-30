@@ -14,12 +14,12 @@ from qiwi_auth import auth_parms
 #auth_parms = {
 #    'provider_id': '',
 #    'login': '',
-#    'password':  ''
+#    'password':  '',
+#    'logpath': '/var/log/qiwi/qiwi_wallet.log'
 #}
 
 #setting up logging
-LOG_FILENAME='qiwi_wallet.log'
-logging.basicConfig(filename=LOG_FILENAME,level=logging.DEBUG)
+logging.basicConfig(filename=auth_parms.get('logpath'),level=logging.DEBUG)
 
 #defining API functions wrappers
 
@@ -54,7 +54,7 @@ def create_bill (args):
       logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
       raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' + message)
 
-    logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + message)
+    logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
     return message
 
 def check_bill_status (args):
@@ -74,10 +74,10 @@ def check_bill_status (args):
       message = 'no JSON response'
 
     if responseCode != 200:
-      logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + message)
+      logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
       raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' +  message)
 
-    logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + message)
+    logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
     return message
 
 def reject_bill(args):
@@ -100,10 +100,10 @@ def reject_bill(args):
     message = 'no JSON response'
 
   if responseCode != 200:
-    logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + message)
+    logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
     raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' + message)
 
-  logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': ' + message)
+  logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
   return message
 
 # configure command line arguments
@@ -137,4 +137,6 @@ bill_term = 10 #срок действия счета
 class QiwiApiException(Exception):
     pass
 
-print command_args.func(command_args)
+
+if __name__ == "__main__":
+  command_args.func(command_args)
