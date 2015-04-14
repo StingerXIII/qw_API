@@ -19,7 +19,7 @@ from qiwi_auth import auth_parms
 #}
 
 #setting up logging
-logging.basicConfig(filename=auth_parms.get('logpath'),level=logging.DEBUG)
+logging.basicConfig(filename=auth_parms.get('logfile'),level=logging.DEBUG)
 
 #defining API functions wrappers
 
@@ -50,11 +50,12 @@ def create_bill (args):
     except ValueError: 
       message = 'no JSON response'
 
+    log_entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message
     if responseCode != 200:
-      logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
+      logging.error(log_entry)
       raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' + message)
 
-    logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
+    logging.info(log_entry)
     return message
 
 def check_bill_status (args):
@@ -73,11 +74,12 @@ def check_bill_status (args):
     except ValueError: 
       message = 'no JSON response'
 
+    log_entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message
     if responseCode != 200:
-      logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
+      logging.error(log_entry)
       raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' +  message)
 
-    logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
+    logging.info(log_entry)
     return message
 
 def reject_bill(args):
@@ -99,11 +101,12 @@ def reject_bill(args):
   except ValueError: 
     message = 'no JSON response'
 
+  log_entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message  
   if responseCode != 200:
-    logging.error(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
+    logging.error(log_entry)
     raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' + message)
 
-  logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message)
+  logging.info(log_entry)
   return message
 
 # configure command line arguments
@@ -140,4 +143,3 @@ class QiwiApiException(Exception):
 
 if __name__ == "__main__":
   command_args.func(command_args)
-  
