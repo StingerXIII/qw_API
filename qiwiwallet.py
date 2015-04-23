@@ -3,6 +3,8 @@ from string import Template
 import pycurl
 import argparse
 import base64
+import cx_Oracle
+import os
 import json
 from io import BytesIO
 import logging
@@ -19,43 +21,51 @@ from qiwi_auth import auth_parms
 #}
 
 #setting up logging
-logging.basicConfig(filename=auth_parms.get('logfile'),level=logging.DEBUG)
+logging.basicConfig(filename=auth_parms.get('logfile'),format = u'%(levelname)-8s [%(asctime)s]  %(message)s',level=logging.DEBUG)
 
 #defining API functions wrappers
 
 def create_bill (args):
     "creates bill for defined user and sum, with specified comment and ID"
     response = BytesIO()
-    params = {'user': 'tel:+' + str(args.user), 
-              'amount': args.amount,
-              'ccy': 'RUB',
-              'comment': 'bill ' + str(args.bill) + ' created by billing system',
-              'lifetime': (datetime.datetime.now() + datetime.timedelta(days=10)).replace(microsecond=0).isoformat(),
-              'prv_name': 'STEL',
-              'pay_source': 'qw',
-              'account': args.account}              
-    c = pycurl.Curl()
-    c.setopt(c.CUSTOMREQUEST, "PUT")
-    c.setopt(c.POSTFIELDS, urllib.urlencode(params))
-    c.setopt(c.URL, url.substitute(provider_id=auth_parms.get('provider_id'),bill_id=args.bill))
-    c.setopt(c.WRITEFUNCTION, response.write)
-    c.setopt(c.HTTPHEADER, ['Accept: text/json',
-                             'Content-Type: application/x-www-form-urlencoded; charset=utf-8',
-                             auth_header.substitute(auth_encoded=auth_encoded)])    
-    c.perform()
-    responseCode = c.getinfo(c.HTTP_CODE)
+    logging.info('args.user_notice=' + str(args.user_notice) + '   args.user_mobile=' + str(args.user_mobile))
+    user_tel = args.user_notice
+    logging.info('teleeeeeeee__1=' + str(user_tel))
+    if ((user_tel is None) or (str(user_tel) =="")):
+  user_tel = args.user_mobile
+  logging.info('teleeeeeeee__22=' + str(user_tel))
+    if ((user_tel is not None) or (str(user_tel) !="")):
+        logging.info('teleeeeeeee__333=' + str(user_tel))
+        params = {'user': 'tel:+' + str(user_tel),
+            'amount': args.amount,
+            'ccy': 'RUB',
+                'comment': 'bill ' + str(args.bill) + ' created by billing system',
+                  'lifetime': (datetime.datetime.now() + datetime.timedelta(days=10)).replace(microsecond=0).isoformat(),
+                  'prv_name': 'STEL',
+                  'pay_source': 'qw',
+                  'account': args.account}              
+        c = pycurl.Curl()
+        c.setopt(c.CUSTOMREQUEST, "PUT")
+        c.setopt(c.POSTFIELDS, urllib.urlencode(params))
+        c.setopt(c.URL, url.substitute(provider_id=auth_parms.get('provider_id'),bill_id=args.bill))
+        c.setopt(c.WRITEFUNCTION, response.write)
+        c.setopt(c.HTTPHEADER, ['Accept: text/json',
+                                 'Content-Type: application/x-www-form-urlencoded; charset=utf-8',
+                                 auth_header.substitute(auth_encoded=auth_encoded)])    
+        c.perform()
+        responseCode = c.getinfo(c.HTTP_CODE)
+    
+        try:
+          message = 'JSON Response: ' + str(json.loads(response.getvalue()))
+        except ValueError: 
+          message = 'no JSON response'
+    
+        log_entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message
+        if responseCode != 200:
+          logging.error(log_entry)
+          raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' + message)
 
-    try:
-      message = 'JSON Response: ' + str(json.loads(response.getvalue()))
-    except ValueError: 
-      message = 'no JSON response'
-
-    log_entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message
-    if responseCode != 200:
-      logging.error(log_entry)
-      raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' + message)
-
-    logging.info(log_entry)
+        logging.info(log_entry)
     return message
 
 def check_bill_status (args):
@@ -112,8 +122,10 @@ def reject_bill(args):
 # configure command line arguments
 arg_parser = argparse.ArgumentParser()
 subparsers = arg_parser.add_subparsers(help='Allowed commands')
+
 create_parser = subparsers.add_parser('create', help=create_bill.__doc__)
-create_parser.add_argument('-u', '--user', help='user phone number', required=True)
+create_parser.add_argument('-m', '--user_mobile', help='user mobile phone number')
+create_parser.add_argument('-n', '--user_notice', help='user notice phone number')
 create_parser.add_argument('-a', '--amount', help='amount of money to pay', required=True)
 create_parser.add_argument('-c', '--account', help='user personal account number', required=True)
 create_parser.add_argument('-b', '--bill', help='bill unique ID')
