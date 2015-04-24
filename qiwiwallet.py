@@ -12,12 +12,13 @@ import urllib
 import datetime
 from qiwi_auth import auth_parms
 
+
 #auth_parms syntax:
 #auth_parms = {
 #    'provider_id': '',
 #    'login': '',
 #    'password':  '',
-#    'logpath': '/var/log/qiwi/qiwi_wallet.log'
+#    'logfile': 'qiwi_wallet.log'
 #}
 
 #setting up logging
@@ -25,48 +26,63 @@ logging.basicConfig(filename=auth_parms.get('logfile'),format = u'%(levelname)-8
 
 #defining API functions wrappers
 
-def create_bill (args):
-    "creates bill for defined user and sum, with specified comment and ID"
-    response = BytesIO()
-    logging.info('args.user_notice=' + str(args.user_notice) + '   args.user_mobile=' + str(args.user_mobile))
-    user_tel = args.user_notice
-    logging.info('teleeeeeeee__1=' + str(user_tel))
-    if ((user_tel is None) or (str(user_tel) =="")):
-  user_tel = args.user_mobile
-  logging.info('teleeeeeeee__22=' + str(user_tel))
-    if ((user_tel is not None) or (str(user_tel) !="")):
-        logging.info('teleeeeeeee__333=' + str(user_tel))
-        params = {'user': 'tel:+' + str(user_tel),
-            'amount': args.amount,
+def api_create (user, bill, amount, account):
+  response = BytesIO()
+  params = {'user': 'tel:+' + str(user),
+            'amount': amount,
             'ccy': 'RUB',
-                'comment': 'bill ' + str(args.bill) + ' created by billing system',
+                'comment': 'bill ' + str(bill) + ' created by billing system',
                   'lifetime': (datetime.datetime.now() + datetime.timedelta(days=10)).replace(microsecond=0).isoformat(),
                   'prv_name': 'STEL',
                   'pay_source': 'qw',
-                  'account': args.account}              
-        c = pycurl.Curl()
-        c.setopt(c.CUSTOMREQUEST, "PUT")
-        c.setopt(c.POSTFIELDS, urllib.urlencode(params))
-        c.setopt(c.URL, url.substitute(provider_id=auth_parms.get('provider_id'),bill_id=args.bill))
-        c.setopt(c.WRITEFUNCTION, response.write)
-        c.setopt(c.HTTPHEADER, ['Accept: text/json',
+                  'account': account}              
+  c = pycurl.Curl()
+  c.setopt(c.CUSTOMREQUEST, "PUT")
+  c.setopt(c.POSTFIELDS, urllib.urlencode(params))
+  c.setopt(c.URL, url.substitute(provider_id=auth_parms.get('provider_id'),bill_id=bill))
+  c.setopt(c.WRITEFUNCTION, response.write)
+  c.setopt(c.HTTPHEADER, ['Accept: text/json',
                                  'Content-Type: application/x-www-form-urlencoded; charset=utf-8',
                                  auth_header.substitute(auth_encoded=auth_encoded)])    
-        c.perform()
-        responseCode = c.getinfo(c.HTTP_CODE)
+  c.perform()
+  HttpResponseCode = c.getinfo(c.HTTP_CODE)
     
-        try:
-          message = 'JSON Response: ' + str(json.loads(response.getvalue()))
-        except ValueError: 
-          message = 'no JSON response'
+  try:
+    message = 'JSON Response: ' + str(json.loads(response.getvalue()))
+  except ValueError: 
+    message = 'no JSON response'
     
-        log_entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message
-        if responseCode != 200:
-          logging.error(log_entry)
-          raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' + message)
-
-        logging.info(log_entry)
+  log_entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(HttpResponseCode) + ' '+ message
+  if HttpResponseCode != 200:
+    logging.error(log_entry)
     return message
+
+  logging.info(log_entry)
+  return message
+
+def create_bill (args):
+    "creates bills for defined user phones and sum, with specified comment and ID"
+    logging.info('args.user_notice=' + str(args.user_notice) + '   args.user_mobile=' + str(args.user_mobile))
+
+    if (args.user_notice != ""):
+      logging.info('processing notice phone numbers: \"' + str(args.user_notice) + '\"')
+      tel_string = args.user_notice
+    elif (args.user_mobile != ""):
+      logging.info('processing mobile phone numbers: \"' + str(args.user_mobile) + '\"')
+      tel_string = args.user_mobile
+    else: 
+      message = 'No valid phone numbers entered!'
+      logging.error(message)
+      return message
+
+    # Делим строку на номера
+    phone_numbers = tel_string.split(",")
+    for user_phone_number in phone_numbers:
+      log_entry = 'processing phone number: \"' + str(user_phone_number) + '\"'
+      logging.debug(log_entry)
+      api_create(user=user_phone_number, amount=args.amount, account=args.account, bill=(str(user_phone_number)+'_'+args.bill))
+
+    return 
 
 def check_bill_status (args):
     "gets bill status from qiwi wallet system"
@@ -78,16 +94,16 @@ def check_bill_status (args):
                              'Content-Type: application/x-www-form-urlencoded; charset=utf-8',
                              auth_header.substitute(auth_encoded=auth_encoded)])
     c.perform()
-    responseCode = c.getinfo(c.HTTP_CODE)
+    HttpResponseCode = c.getinfo(c.HTTP_CODE)
     try:
       message = 'JSON Response: ' + str(json.loads(response.getvalue()))
     except ValueError: 
       message = 'no JSON response'
 
-    log_entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message
-    if responseCode != 200:
+    log_entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(HttpResponseCode) + ' '+ message
+    if HttpResponseCode != 200:
       logging.error(log_entry)
-      raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' +  message)
+      raise QiwiApiException('HTTP Status: ' + str(HttpResponseCode) + '\n' +  message)
 
     logging.info(log_entry)
     return message
@@ -105,16 +121,16 @@ def reject_bill(args):
                           'Content-Type: application/x-www-form-urlencoded; charset=utf-8',
                           auth_header.substitute(auth_encoded=auth_encoded)])    
   c.perform()
-  responseCode = c.getinfo(c.HTTP_CODE)
+  HttpResponseCode = c.getinfo(c.HTTP_CODE)
   try:
     message = 'JSON Response: ' + str(json.loads(response.getvalue()))
   except ValueError: 
     message = 'no JSON response'
 
-  log_entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(responseCode) + ' '+ message  
-  if responseCode != 200:
+  log_entry = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ': HTTP Status: ' + str(HttpResponseCode) + ' '+ message  
+  if HttpResponseCode != 200:
     logging.error(log_entry)
-    raise QiwiApiException('HTTP Status: ' + str(responseCode) + '\n' + message)
+    raise QiwiApiException('HTTP Status: ' + str(HttpResponseCode) + '\n' + message)
 
   logging.info(log_entry)
   return message
@@ -152,6 +168,9 @@ bill_term = 10 #срок действия счета
 class QiwiApiException(Exception):
     pass
 
+# QIWI API exception
+class QiwiApiException(Exception):
+    pass
 
 if __name__ == "__main__":
   command_args.func(command_args)
