@@ -79,7 +79,7 @@ def create_bill (args):
     phone_numbers = tel_string.split(",")
     for user_phone_number in phone_numbers:
       log_entry = 'processing phone number: \"' + str(user_phone_number) + '\"'
-      logging.debug(log_entry)
+      logging.info(log_entry)
       api_create(user=user_phone_number, amount=args.amount, account=args.account, bill=(str(user_phone_number)+'_'+args.bill))
 
     return 
